@@ -386,7 +386,6 @@ def test_permissible_values(
             raise AssertionError("all combinations must be accounted for")
 
 
-<<<<<<< HEAD
 def _restriction_values(g: Graph, predicate: URIRef) -> list:
     """Collect the objects of *predicate* across all OWL restriction nodes in *g*."""
     results = []
