@@ -194,6 +194,14 @@ class OwlSchemaGenerator(Generator):
     the concrete (non-mixin) classes that directly use that mixin (or the single class
     URI if there is only one user)."""
 
+    skip_abstract_class_as_unionof_subclasses: bool = False
+    """If True, suppress the generation of ``rdfs:subClassOf owl:unionOf(subclasses)`` covering axioms
+    for abstract classes.  By default such axioms are emitted: for every abstract class that has at least
+    one direct ``is_a`` child, the generator adds
+    ``AbstractClass rdfs:subClassOf (Child1 or Child2 or …)``, expressing the open-world covering
+    constraint that every instance of the abstract class must also be an instance of one of its
+    direct subclasses."""
+
     def as_graph(self) -> Graph:
         """
         Generate an rdflib Graph from the LinkML schema.
@@ -466,6 +474,15 @@ class OwlSchemaGenerator(Generator):
                 self.graph.remove((superclass_expr, OWL.intersectionOf, ixn_listnodes[0]))
             else:
                 self.graph.add((subject_expr, RDFS.subClassOf, superclass_expr))
+        # Abstract covering axiom: abstract class rdfs:subClassOf (child1 or child2 or …)
+        # This expresses the open-world constraint that every instance of the abstract class
+        # must be an instance of at least one of its direct subclasses.
+        if cls.abstract and not self.skip_abstract_class_as_unionof_subclasses:
+            children = sorted(sv.class_children(cls.name, imports=self.mergeimports, mixins=False, is_a=True))
+            if children:
+                child_uris = [self._class_uri(child) for child in children]
+                union_node = self._union_of(child_uris)
+                self.graph.add((cls_uri, RDFS.subClassOf, union_node))
 
     def get_own_slots(self, cls: ClassDefinition | AnonymousClassExpression) -> list[SlotDefinition]:
         """
@@ -1577,6 +1594,15 @@ class OwlSchemaGenerator(Generator):
         "Their slot restrictions are inlined into every class that uses the mixin, "
         "and any slot range that refers to a mixin is replaced by a union of the "
         "concrete classes that use it (or the single class directly if there is only one)."
+    ),
+)
+@click.option(
+    "--skip-abstract-class-as-unionof-subclasses/--no-skip-abstract-class-as-unionof-subclasses",
+    default=False,
+    show_default=True,
+    help=(
+        "If true, suppress rdfs:subClassOf owl:unionOf(subclasses) covering axioms for abstract classes. "
+        "By default such axioms are emitted for every abstract class that has direct is_a children."
     ),
 )
 @click.version_option(__version__, "-V", "--version")
