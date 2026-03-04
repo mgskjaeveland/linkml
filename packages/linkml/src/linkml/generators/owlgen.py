@@ -425,10 +425,11 @@ class OwlSchemaGenerator(Generator):
                         )
                     )
         if cls.class_uri:
-            # If a class_ur is assigned, and it is different from model class_uri, then
-            # Add an assertion that links the two
+            # If a class_uri is assigned, and it is different from the native URI, then
+            # add an assertion that links the two. Compare as URIRef to avoid the
+            # asymmetric equality between rdflib URIRef and plain str.
             mapped_uri = sv.get_uri(cls, expand=True, native=not self.use_native_uris)
-            if cls_uri != mapped_uri:
+            if cls_uri != URIRef(mapped_uri):
                 p = OWL.equivalentClass if self.assert_equivalent_classes else SKOS.exactMatch
                 self.graph.add((URIRef(cls_uri), p, URIRef(mapped_uri)))
         subject_expr = URIRef(cls_uri)
